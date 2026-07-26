@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "two-field-analyzer": {
+      "command": "node",
+      "args": ["${pluginDir}/server.js"]
+    }
+  }
+}
