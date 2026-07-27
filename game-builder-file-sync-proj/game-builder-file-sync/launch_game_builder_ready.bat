@@ -55,8 +55,15 @@ timeout /t 2 /nobreak >nul
 echo Starting OpenAI tunnel...
 start "OpenAI tunnel" /D "%~dp0" cmd.exe /k ""%TUNNEL_EXE%" run --profile two-field-analyzer"
 
+timeout /t 2 /nobreak >nul
+
+echo Opening full-size local editor...
+start "" "http://127.0.0.1:8787/app"
+
 echo.
 echo Game Builder started.
-echo Keep both windows open.
-timeout /t 3 /nobreak >nul
+echo Local editor: http://127.0.0.1:8787/app
+echo Press F11 in the browser for native fullscreen.
+echo Keep the MCP and tunnel windows open.
+timeout /t 4 /nobreak >nul
 exit /b 0

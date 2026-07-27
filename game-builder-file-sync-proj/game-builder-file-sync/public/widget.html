@@ -5,161 +5,349 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Visual Game Builder</title>
   <style>
-    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --bg: #080d19;
+      --panel: #10182a;
+      --panel-2: #151f34;
+      --panel-3: #1b2944;
+      --border: #2d3b5b;
+      --muted: #8d99ae;
+      --text: #eef2ff;
+      --accent: #10a37f;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; background: #0b1020; color: #e5e7eb; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--text); }
+    body { min-height: 520px; }
     button, input, textarea { font: inherit; }
-    .app { min-height: 720px; display: grid; grid-template-rows: auto 1fr; }
-    header { padding: 14px 16px; border-bottom: 1px solid #26304a; display: flex; gap: 12px; align-items: center; justify-content: space-between; background: #11182b; }
-    h1 { margin: 0; font-size: 18px; }
-    .sub { opacity: .65; font-size: 12px; }
-    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    button { border: 1px solid #33415f; background: #18233a; color: #e5e7eb; border-radius: 9px; padding: 9px 12px; cursor: pointer; }
-    button.primary { background: #10a37f; border-color: #10a37f; color: white; font-weight: 700; }
-    main { display: grid; grid-template-columns: 240px minmax(360px, 1fr) 320px; min-height: 0; }
-    aside, .inspector { padding: 12px; overflow: auto; background: #11182b; }
-    aside { border-right: 1px solid #26304a; }
-    .inspector { border-left: 1px solid #26304a; }
-    .section-title { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .6; margin: 8px 0; }
-    .prompt { width: 100%; min-height: 130px; resize: vertical; background: #0d1426; color: white; border: 1px solid #33415f; border-radius: 10px; padding: 10px; }
-    .node-list { display: grid; gap: 6px; }
-    .node-item { text-align: left; width: 100%; padding: 9px; background: #151f34; }
-    .node-item small { display: block; opacity: .55; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; }
-    .canvas-wrap { position: relative; overflow: auto; background: radial-gradient(circle at 1px 1px, #27324d 1px, transparent 1px); background-size: 22px 22px; }
-    #canvas { position: relative; min-width: 900px; min-height: 680px; }
-    svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-    .card { position: absolute; width: 190px; background: #172238; border: 1px solid #3a4969; border-radius: 12px; box-shadow: 0 10px 28px #0008; cursor: pointer; overflow: hidden; }
-    .card.selected { outline: 2px solid #10a37f; }
-    .card .head { padding: 10px 12px; font-weight: 800; background: #1d2a45; }
-    .card .body { padding: 9px 12px; font-size: 12px; display: grid; gap: 5px; }
-    .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; font-size: 10px; background: #2a3856; margin-right: 4px; }
-    .badge.network { background: #56305f; }
-    .empty { opacity: .55; padding: 24px; text-align: center; }
-    .details h2 { margin: 0 0 4px; font-size: 18px; }
-    .details .path { opacity: .55; font-size: 11px; word-break: break-all; }
-    .details ul { margin: 6px 0 14px; padding-left: 18px; }
-    .details code { font-size: 11px; }
-    #status { font-size: 12px; min-height: 18px; opacity: .75; margin-top: 8px; }
-    @media (max-width: 900px) { main { grid-template-columns: 210px 1fr; } .inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid #26304a; } }
+    button { border: 1px solid var(--border); background: #18233a; color: var(--text); border-radius: 9px; padding: 9px 12px; cursor: pointer; }
+    button:hover { border-color: #52658e; }
+    button:disabled { opacity: .5; cursor: wait; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 800; }
+    button.ghost { background: transparent; }
+    input, textarea { width: 100%; color: var(--text); background: #0b1324; border: 1px solid var(--border); border-radius: 9px; padding: 10px; outline: none; }
+    input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px #10a37f25; }
+    .app { width: 100%; height: 100dvh; min-height: 520px; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+    header { min-height: 66px; padding: 11px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: center; justify-content: space-between; background: #0f1729; }
+    .brand { min-width: 180px; }
+    h1 { margin: 0; font-size: 18px; line-height: 1.15; }
+    .sub { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .actions { display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+    .key { opacity: .65; font-size: 10px; margin-left: 5px; }
+    main { min-height: 0; position: relative; display: grid; grid-template-columns: 260px minmax(0, 1fr) 340px; }
+    aside, .inspector { min-height: 0; overflow: auto; background: var(--panel); }
+    aside { padding: 12px; border-right: 1px solid var(--border); }
+    .inspector { padding: 13px; border-left: 1px solid var(--border); }
+    .section-title { margin: 11px 0 7px; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
+    .prompt { min-height: 116px; resize: vertical; }
+    .wide { width: 100%; }
+    #status { min-height: 34px; padding: 7px 0; color: #a8b3c7; font-size: 11px; line-height: 1.35; }
+    #status.error { color: #fca5a5; }
+    #status.success { color: #6ee7b7; }
+    .search { margin-bottom: 8px; }
+    .node-list { display: grid; gap: 6px; padding-bottom: 16px; }
+    .node-item { width: 100%; padding: 9px; text-align: left; background: var(--panel-2); }
+    .node-item.active { border-color: var(--accent); background: #12352f; }
+    .node-item strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .node-item small { display: block; margin-top: 3px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .workspace { min-width: 0; min-height: 0; position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--bg); }
+    .canvas-toolbar { z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--border); background: #0d1527; }
+    .canvas-toolbar .hint { color: var(--muted); font-size: 11px; }
+    .canvas-wrap { min-height: 0; position: relative; overflow: auto; background-color: #09101f; background-image: radial-gradient(circle at 1px 1px, #263451 1px, transparent 1px); background-size: 22px 22px; }
+    #canvas { position: relative; min-width: 1100px; min-height: 760px; }
+    #edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+    .edge-label { fill: #a8b3c7; font-size: 10px; paint-order: stroke; stroke: #09101f; stroke-width: 4px; stroke-linejoin: round; }
+    .empty { padding: 34px; color: var(--muted); text-align: center; }
+    .card { position: absolute; width: 210px; overflow: hidden; border: 1px solid #3a4969; border-radius: 12px; background: #172238; box-shadow: 0 12px 30px #0009; user-select: none; }
+    .card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px #10a37f44, 0 12px 30px #0009; }
+    .card .head { padding: 10px 12px; font-weight: 850; background: var(--panel-3); cursor: grab; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card.dragging .head { cursor: grabbing; }
+    .card .body { padding: 9px 12px; display: grid; gap: 6px; color: #c4ccda; font-size: 11px; cursor: pointer; }
+    .badge { display: inline-block; margin: 0 4px 4px 0; border-radius: 999px; padding: 2px 7px; background: #293a5c; color: #dbeafe; font-size: 9px; }
+    .badge.network { background: #56305f; color: #f5d0fe; }
+    .inspector-head { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+    .details h2 { margin: 0 0 3px; font-size: 19px; overflow-wrap: anywhere; }
+    .details .path { color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+    .details ul { margin: 6px 0 13px; padding-left: 18px; }
+    .details li { margin: 5px 0; }
+    .details code { color: #dbeafe; font-size: 10px; overflow-wrap: anywhere; }
+    .rename-box { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: #0c1426; }
+    .rename-actions { display: grid; grid-template-columns: 1fr auto; gap: 7px; margin-top: 7px; }
+    .rename-note { margin-top: 7px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+    .close-inspector { display: none; padding: 5px 8px; }
+    .demo-warning { display: none; margin: 0 0 8px; padding: 8px; border: 1px solid #854d0e; border-radius: 8px; background: #422006; color: #fde68a; font-size: 10px; line-height: 1.35; }
+    .demo-warning.visible { display: block; }
+    .busy { pointer-events: none; opacity: .75; }
+    @media (max-width: 1050px) {
+      main { grid-template-columns: 225px minmax(0, 1fr); }
+      .inspector { display: none; position: absolute; z-index: 30; top: 10px; right: 10px; bottom: 10px; width: min(380px, calc(100% - 245px)); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 22px 60px #000c; }
+      .inspector.open { display: block; }
+      .close-inspector { display: inline-block; }
+    }
+    @media (max-width: 720px) {
+      header { align-items: flex-start; }
+      .sub { display: none; }
+      .actions button { padding: 7px 9px; font-size: 11px; }
+      main { grid-template-columns: 185px minmax(0, 1fr); }
+      aside { padding: 8px; }
+      .inspector { width: calc(100% - 20px); }
+      .prompt { min-height: 90px; }
+    }
   </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app">
   <header>
-    <div><h1>Visual Game Builder</h1><div class="sub">Объекты, компоненты, методы, зависимости и сетевые связи</div></div>
-    <div class="actions"><button id="scan" class="primary">Сканировать проект</button><button id="reset">Демо-граф</button></div>
+    <div class="brand"><h1>Visual Game Builder</h1><div class="sub">Рабочий граф Unity-кода: классы, методы, зависимости и сеть</div></div>
+    <div class="actions">
+      <button id="scan" class="primary">Сканировать</button>
+      <button id="fullscreen">На весь экран <span class="key">F11</span></button>
+      <button id="standalone" title="Открыть локальную версию в отдельной вкладке">Отдельная вкладка</button>
+      <button id="reset" class="ghost">Пример</button>
+    </div>
   </header>
   <main>
     <aside>
+      <div id="demoWarning" class="demo-warning">Это только пример. Переименование здесь меняет граф, но не файлы. Нажми «Сканировать», чтобы работать с настоящим проектом.</div>
       <div class="section-title">Опиши объект</div>
       <textarea id="prompt" class="prompt" placeholder="Например: герой ходит, получает урон, синхронизирует HP и просит сервер о респавне"></textarea>
-      <button id="ask" class="primary" style="width:100%;margin-top:8px">Создать вместе с ChatGPT</button>
-      <div id="status"></div>
+      <button id="ask" class="primary wide" style="margin-top:7px">Создать вместе с ChatGPT</button>
+      <div id="status" role="status"></div>
       <div class="section-title">Объекты проекта</div>
+      <input id="search" class="search" placeholder="Поиск класса или файла" />
       <div id="nodes" class="node-list"></div>
     </aside>
-    <section class="canvas-wrap"><div id="canvas"><svg id="edges"></svg><div id="empty" class="empty">Нажми «Сканировать проект» или открой демо-граф.</div></div></section>
-    <section class="inspector"><div id="details" class="details"><div class="empty">Выбери узел на графе</div></div></section>
+    <section class="workspace">
+      <div class="canvas-toolbar"><div class="hint">Перетаскивай узлы за заголовок. Нажми узел, чтобы открыть методы.</div><button id="center" class="ghost">К началу графа</button></div>
+      <div class="canvas-wrap" id="canvasWrap"><div id="canvas"><svg id="edges"></svg><div id="empty" class="empty">Подключаюсь к проекту и сканирую C#…</div></div></div>
+    </section>
+    <section class="inspector" id="inspector"><div id="details" class="details"><div class="empty">Выбери узел на графе</div></div></section>
   </main>
 </div>
 <script type="module">
-  const state = { graph: null, selected: null };
+  const state = { graph: null, selected: null, positions: new Map(), isDemo: false, displayMode: window.openai?.displayMode ?? 'inline', dragging: false };
+  const app = document.querySelector('#app');
   const nodesEl = document.querySelector('#nodes');
   const canvas = document.querySelector('#canvas');
+  const canvasWrap = document.querySelector('#canvasWrap');
   const edgesSvg = document.querySelector('#edges');
   const details = document.querySelector('#details');
+  const inspector = document.querySelector('#inspector');
   const status = document.querySelector('#status');
   const prompt = document.querySelector('#prompt');
-
+  const search = document.querySelector('#search');
+  const demoWarning = document.querySelector('#demoWarning');
+  const fullscreenButton = document.querySelector('#fullscreen');
   const demo = {
     nodes: [
-      { id:'Player', name:'Player', path:'Assets/Scripts/Player.cs', kind:'component', inherits:['NetworkBehaviour'], fields:[{visibility:'public',type:'float',name:'Health'}], methods:[{visibility:'public',name:'TakeDamage',parameters:['float amount']},{visibility:'private',name:'RequestRespawn',parameters:[]}], dependencies:['Movement','RespawnService'], network:['synchronized-state'] },
-      { id:'Movement', name:'Movement', path:'Assets/Scripts/Movement.cs', kind:'component', inherits:['MonoBehaviour'], fields:[], methods:[{visibility:'private',name:'Update',parameters:[]}], dependencies:[], network:[] },
-      { id:'RespawnService', name:'RespawnService', path:'Assets/Scripts/RespawnService.cs', kind:'component', inherits:['NetworkBehaviour'], fields:[], methods:[{visibility:'public',name:'RespawnPlayer',parameters:['ulong playerId']}], dependencies:[], network:['client-to-server'] },
+      { id:'demo:Player', name:'Player', path:'Пример/Player.cs', kind:'component', inherits:['NetworkBehaviour'], fields:[{visibility:'public',type:'float',name:'Health'}], methods:[{visibility:'public',name:'TakeDamage',parameters:['float amount']},{visibility:'private',name:'RequestRespawn',parameters:[]}], dependencies:['Movement','RespawnService'], network:['synchronized-state'] },
+      { id:'demo:Movement', name:'Movement', path:'Пример/Movement.cs', kind:'component', inherits:['MonoBehaviour'], fields:[], methods:[{visibility:'private',name:'Update',parameters:[]}], dependencies:[], network:[] },
+      { id:'demo:RespawnService', name:'RespawnService', path:'Пример/RespawnService.cs', kind:'component', inherits:['NetworkBehaviour'], fields:[], methods:[{visibility:'public',name:'RespawnPlayer',parameters:['ulong playerId']}], dependencies:[], network:['client-to-server'] },
       { id:'network:synchronized-state', name:'synchronized-state', path:'Network', kind:'network', inherits:[], fields:[], methods:[], dependencies:[], network:[] },
       { id:'network:client-to-server', name:'client-to-server', path:'Network', kind:'network', inherits:[], fields:[], methods:[], dependencies:[], network:[] }
     ],
     edges: [
-      {from:'Player',to:'Movement',type:'dependency',label:'Movement'},
-      {from:'Player',to:'RespawnService',type:'dependency',label:'RespawnService'},
-      {from:'Player',to:'network:synchronized-state',type:'network',label:'sync'},
-      {from:'RespawnService',to:'network:client-to-server',type:'network',label:'RPC'}
+      {from:'demo:Player',to:'demo:Movement',type:'dependency',label:'Movement'},
+      {from:'demo:Player',to:'demo:RespawnService',type:'dependency',label:'RespawnService'},
+      {from:'demo:Player',to:'network:synchronized-state',type:'network',label:'sync'},
+      {from:'demo:RespawnService',to:'network:client-to-server',type:'network',label:'RPC'}
     ]
   };
-
-  function positions(graph) {
+  function setStatus(message, kind = '') { status.textContent = message; status.className = kind; }
+  function setBusy(value) { app.classList.toggle('busy', value); document.querySelectorAll('button').forEach((button) => { button.disabled = value; }); }
+  function normalizeToolResult(result) {
+    if (!result) return {};
+    if (result.isError) {
+      const message = result.content?.map?.((item) => item.text).filter(Boolean).join('\n') || 'Ошибка инструмента';
+      throw new Error(message);
+    }
+    return result.structuredContent ?? result;
+  }
+  async function callBackend(name, args = {}) {
+    if (typeof window.openai?.callTool === 'function') return normalizeToolResult(await window.openai.callTool(name, args));
+    const endpoints = { analyze_project_architecture: '/api/analyze', preview_rename_csharp_class: '/api/rename-preview', rename_csharp_class: '/api/rename' };
+    const endpoint = endpoints[name];
+    if (!endpoint) throw new Error(`Инструмент ${name} недоступен вне ChatGPT.`);
+    const response = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(args) });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+    return payload;
+  }
+  function defaultPositions(graph) {
     const map = new Map();
-    const normal = graph.nodes.filter(n => n.kind !== 'network');
-    const network = graph.nodes.filter(n => n.kind === 'network');
-    normal.forEach((n,i) => map.set(n.id,{x:40+(i%3)*260,y:50+Math.floor(i/3)*190}));
-    network.forEach((n,i) => map.set(n.id,{x:690,y:80+i*170}));
+    const normal = graph.nodes.filter((node) => node.kind !== 'network');
+    const network = graph.nodes.filter((node) => node.kind === 'network');
+    normal.forEach((node, index) => map.set(node.id, { x: 46 + (index % 4) * 260, y: 52 + Math.floor(index / 4) * 170 }));
+    network.forEach((node, index) => map.set(node.id, { x: 46 + (index % 4) * 260, y: 90 + Math.ceil(normal.length / 4) * 170 + Math.floor(index / 4) * 150 }));
     return map;
   }
-
-  function render(graph) {
-    state.graph = graph; state.selected = null;
-    [...canvas.querySelectorAll('.card')].forEach(el => el.remove());
-    nodesEl.innerHTML = ''; edgesSvg.innerHTML = '';
-    document.querySelector('#empty').style.display = graph.nodes.length ? 'none' : 'block';
-    const pos = positions(graph);
-
-    for (const node of graph.nodes) {
-      const item = document.createElement('button');
-      item.className = 'node-item';
-      item.innerHTML = `${node.name}<small>${node.path}</small>`;
-      item.onclick = () => select(node.id);
-      nodesEl.appendChild(item);
-
-      const card = document.createElement('div');
-      card.className = 'card'; card.dataset.id = node.id;
-      card.style.left = pos.get(node.id).x+'px'; card.style.top = pos.get(node.id).y+'px';
-      card.innerHTML = `<div class="head">${node.name}</div><div class="body"><div><span class="badge">${node.kind}</span>${node.network?.map(()=>'<span class="badge network">network</span>').join('')||''}</div><div>${node.methods?.length||0} методов · ${node.fields?.length||0} полей</div></div>`;
-      card.onclick = () => select(node.id);
-      canvas.appendChild(card);
+  function resizeCanvas() {
+    let maxX = 1100, maxY = 760;
+    for (const position of state.positions.values()) { maxX = Math.max(maxX, position.x + 280); maxY = Math.max(maxY, position.y + 190); }
+    canvas.style.width = `${maxX}px`; canvas.style.height = `${maxY}px`;
+  }
+  function drawEdges() {
+    edgesSvg.innerHTML = '';
+    if (!state.graph) return;
+    for (const edge of state.graph.edges ?? []) {
+      const fromCard = canvas.querySelector(`.card[data-id="${CSS.escape(edge.from)}"]`);
+      const toCard = canvas.querySelector(`.card[data-id="${CSS.escape(edge.to)}"]`);
+      if (!fromCard || !toCard) continue;
+      const x1 = fromCard.offsetLeft + fromCard.offsetWidth, y1 = fromCard.offsetTop + Math.min(52, fromCard.offsetHeight / 2);
+      const x2 = toCard.offsetLeft, y2 = toCard.offsetTop + Math.min(52, toCard.offsetHeight / 2);
+      const middle = Math.max(50, Math.abs(x2 - x1) * .45);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      line.setAttribute('d', `M ${x1} ${y1} C ${x1 + middle} ${y1}, ${x2 - middle} ${y2}, ${x2} ${y2}`);
+      line.setAttribute('fill', 'none'); line.setAttribute('stroke', edge.type === 'network' ? '#c084fc' : '#64748b'); line.setAttribute('stroke-width', '2'); edgesSvg.appendChild(line);
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', String((x1 + x2) / 2)); label.setAttribute('y', String((y1 + y2) / 2 - 7)); label.setAttribute('text-anchor', 'middle'); label.setAttribute('class', 'edge-label'); label.textContent = edge.label ?? edge.type; edgesSvg.appendChild(label);
     }
-
-    requestAnimationFrame(() => {
-      for (const edge of graph.edges) {
-        const a = pos.get(edge.from), b = pos.get(edge.to); if (!a || !b) continue;
-        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-        line.setAttribute('x1',a.x+190); line.setAttribute('y1',a.y+48); line.setAttribute('x2',b.x); line.setAttribute('y2',b.y+48);
-        line.setAttribute('stroke',edge.type==='network'?'#c084fc':'#64748b'); line.setAttribute('stroke-width','2');
-        edgesSvg.appendChild(line);
-      }
+  }
+  function makeDraggable(card, node) {
+    const handle = card.querySelector('.head');
+    handle.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault(); state.dragging = true; card.classList.add('dragging'); handle.setPointerCapture(event.pointerId);
+      const start = state.positions.get(node.id); const origin = { x: event.clientX, y: event.clientY, left: start.x, top: start.y };
+      const move = (moveEvent) => {
+        const next = { x: Math.max(10, origin.left + moveEvent.clientX - origin.x), y: Math.max(10, origin.top + moveEvent.clientY - origin.y) };
+        state.positions.set(node.id, next); card.style.left = `${next.x}px`; card.style.top = `${next.y}px`; resizeCanvas(); drawEdges();
+      };
+      const stop = () => { state.dragging = false; card.classList.remove('dragging'); handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', stop); handle.removeEventListener('pointercancel', stop); };
+      handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', stop); handle.addEventListener('pointercancel', stop);
     });
   }
-
-  function select(id) {
-    state.selected = id;
-    document.querySelectorAll('.card').forEach(el => el.classList.toggle('selected',el.dataset.id===id));
-    const node = state.graph.nodes.find(n => n.id===id); if (!node) return;
-    details.innerHTML = `<h2>${node.name}</h2><div class="path">${node.path}</div>
-      <div class="section-title">Наследование</div><div>${node.inherits?.map(v=>`<span class="badge">${v}</span>`).join('')||'—'}</div>
-      <div class="section-title">Поля и доступ</div><ul>${node.fields?.map(f=>`<li><code>${f.visibility} ${f.type} ${f.name}</code></li>`).join('')||'<li>Нет найденных полей</li>'}</ul>
-      <div class="section-title">Методы</div><ul>${node.methods?.map(m=>`<li><code>${m.visibility} ${m.name}(${m.parameters.join(', ')})</code></li>`).join('')||'<li>Нет найденных методов</li>'}</ul>
-      <div class="section-title">Зависимости</div><div>${node.dependencies?.map(v=>`<span class="badge">${v}</span>`).join('')||'—'}</div>
-      <div class="section-title">Сеть</div><div>${node.network?.map(v=>`<span class="badge network">${v}</span>`).join('')||'—'}</div>`;
+  function nodeMatchesSearch(node) { const query = search.value.trim().toLowerCase(); return !query || `${node.name} ${node.path} ${node.kind}`.toLowerCase().includes(query); }
+  function renderNodeList() {
+    nodesEl.innerHTML = '';
+    if (!state.graph) return;
+    for (const node of state.graph.nodes.filter(nodeMatchesSearch)) {
+      const item = document.createElement('button'); item.className = `node-item${state.selected === node.id ? ' active' : ''}`;
+      const strong = document.createElement('strong'); strong.textContent = node.name;
+      const small = document.createElement('small'); small.textContent = node.path;
+      item.append(strong, small); item.onclick = () => selectNode(node.id); nodesEl.appendChild(item);
+    }
   }
-
-  document.querySelector('#reset').onclick = () => render(demo);
-  document.querySelector('#scan').onclick = async () => {
-    status.textContent = 'Сканирую C#-файлы…';
+  function render(graph, { demoMode = false, preserveSelection = false } = {}) {
+    const previousSelection = preserveSelection ? state.selected : null;
+    state.graph = graph; state.isDemo = demoMode; state.positions = defaultPositions(graph); state.selected = graph.nodes.some((node) => node.id === previousSelection) ? previousSelection : null;
+    demoWarning.classList.toggle('visible', demoMode);
+    [...canvas.querySelectorAll('.card')].forEach((element) => element.remove()); edgesSvg.innerHTML = '';
+    document.querySelector('#empty').style.display = graph.nodes.length ? 'none' : 'block';
+    for (const node of graph.nodes) {
+      const position = state.positions.get(node.id); const card = document.createElement('article');
+      card.className = `card${state.selected === node.id ? ' selected' : ''}`; card.dataset.id = node.id; card.style.left = `${position.x}px`; card.style.top = `${position.y}px`;
+      const head = document.createElement('div'); head.className = 'head'; head.textContent = node.name; head.title = 'Перетащи узел или нажми, чтобы открыть';
+      const body = document.createElement('div'); body.className = 'body';
+      const badges = document.createElement('div'); badges.innerHTML = `<span class="badge">${node.kind}</span>${(node.network ?? []).map(() => '<span class="badge network">network</span>').join('')}`;
+      const summary = document.createElement('div'); summary.textContent = `${node.methods?.length ?? 0} методов · ${node.fields?.length ?? 0} полей`;
+      body.append(badges, summary); body.onclick = () => selectNode(node.id); head.onclick = () => { if (!state.dragging) selectNode(node.id); };
+      card.append(head, body); canvas.appendChild(card); makeDraggable(card, node);
+    }
+    resizeCanvas(); renderNodeList(); requestAnimationFrame(drawEdges);
+    if (state.selected) selectNode(state.selected); else details.innerHTML = '<div class="empty">Выбери узел на графе</div>';
+  }
+  function escapeHtml(value) { return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;'); }
+  function renderInspector(node) {
+    const editable = node.kind !== 'network';
+    details.innerHTML = `
+      <div class="inspector-head"><div><h2></h2><div class="path"></div></div><button class="close-inspector ghost" aria-label="Закрыть">✕</button></div>
+      ${editable ? `<div class="rename-box"><div class="section-title" style="margin-top:0">Переименование</div><input id="renameName" autocomplete="off" /><div class="rename-actions"><button id="renameButton" class="primary">Переименовать</button><button id="renameReset" class="ghost">Сброс</button></div><div class="rename-note">Сначала будет показан список затрагиваемых C#-файлов. После подтверждения изменятся класс, точные ссылки на него и имя файла.</div></div>` : ''}
+      <div class="section-title">Наследование</div><div class="inherits"></div>
+      <div class="section-title">Поля и доступ</div><ul class="fields"></ul>
+      <div class="section-title">Методы</div><ul class="methods"></ul>
+      <div class="section-title">Зависимости</div><div class="dependencies"></div>
+      <div class="section-title">Сеть</div><div class="network"></div>`;
+    details.querySelector('h2').textContent = node.name; details.querySelector('.path').textContent = node.path;
+    details.querySelector('.inherits').innerHTML = node.inherits?.map((value) => `<span class="badge">${escapeHtml(value)}</span>`).join('') || '—';
+    details.querySelector('.fields').innerHTML = node.fields?.map((field) => `<li><code>${escapeHtml(`${field.visibility} ${field.type} ${field.name}`)}</code></li>`).join('') || '<li>Нет найденных полей</li>';
+    details.querySelector('.methods').innerHTML = node.methods?.map((method) => `<li><code>${escapeHtml(`${method.visibility} ${method.name}(${method.parameters.join(', ')})`)}</code></li>`).join('') || '<li>Нет найденных методов</li>';
+    details.querySelector('.dependencies').innerHTML = node.dependencies?.map((value) => `<span class="badge">${escapeHtml(value)}</span>`).join('') || '—';
+    details.querySelector('.network').innerHTML = node.network?.map((value) => `<span class="badge network">${escapeHtml(value)}</span>`).join('') || '—';
+    details.querySelector('.close-inspector').onclick = () => inspector.classList.remove('open');
+    if (editable) {
+      const renameInput = details.querySelector('#renameName'); renameInput.value = node.name;
+      details.querySelector('#renameReset').onclick = () => { renameInput.value = node.name; renameInput.focus(); };
+      details.querySelector('#renameButton').onclick = () => renameNode(node, renameInput.value.trim());
+      renameInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') renameNode(node, renameInput.value.trim()); });
+    }
+  }
+  function selectNode(id) {
+    state.selected = id; document.querySelectorAll('.card').forEach((element) => element.classList.toggle('selected', element.dataset.id === id)); renderNodeList();
+    const node = state.graph?.nodes.find((candidate) => candidate.id === id); if (!node) return; renderInspector(node); inspector.classList.add('open');
+  }
+  function renameDemoNode(node, newName) {
+    const oldName = node.name; node.name = newName;
+    if (node.path.endsWith(`/${oldName}.cs`)) node.path = node.path.slice(0, -`${oldName}.cs`.length) + `${newName}.cs`;
+    for (const candidate of state.graph.nodes) candidate.dependencies = candidate.dependencies?.map((dependency) => dependency === oldName ? newName : dependency) ?? [];
+    for (const edge of state.graph.edges) if (edge.label === oldName) edge.label = newName;
+    render(state.graph, { demoMode: true }); selectNode(node.id); setStatus(`Пример переименован: ${oldName} → ${newName}. Файлы не менялись.`, 'success');
+  }
+  async function renameNode(node, newName) {
+    if (!newName) return setStatus('Введи новое имя класса.', 'error');
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(newName)) return setStatus('Имя должно быть корректным C#-идентификатором.', 'error');
+    if (newName === node.name) return setStatus('Это имя уже установлено.');
+    if (state.isDemo) return renameDemoNode(node, newName);
+    setBusy(true); setStatus('Проверяю ссылки на класс…');
     try {
-      const result = await window.openai?.callTool?.('analyze_project_architecture',{directory:'.'});
-      const graph = result?.structuredContent?.graph ?? result?.graph;
-      if (!graph) throw new Error('Нет данных графа');
-      render(graph); status.textContent = `Готово: ${graph.filesScanned ?? graph.nodes.length} файлов/узлов.`;
-    } catch (error) { status.textContent = 'Не удалось сканировать. Открываю демо-граф.'; render(demo); }
-  };
+      const preview = await callBackend('preview_rename_csharp_class', { path: node.path, newName }); const plan = preview.plan;
+      if (!plan) throw new Error('Сервер не вернул план переименования.');
+      const files = plan.files.slice(0, 8).map((item) => `• ${item.path} (${item.replacements})`).join('\n'); const more = plan.files.length > 8 ? `\n…ещё ${plan.files.length - 8}` : '';
+      const accepted = confirm(`Переименовать ${plan.oldName} → ${plan.newName}?\n\nИзменится файлов: ${plan.files.length}\nТочных замен: ${plan.totalReplacements}\n\n${files}${more}`);
+      if (!accepted) { setStatus('Переименование отменено.'); return; }
+      setStatus('Записываю изменения в проект…');
+      const result = await callBackend('rename_csharp_class', { path: node.path, newName });
+      if (!result.graph) throw new Error('Переименование выполнено, но граф не вернулся. Нажми «Сканировать».');
+      render(result.graph); const renamedNode = result.graph.nodes.find((candidate) => candidate.name === newName); if (renamedNode) selectNode(renamedNode.id);
+      setStatus(`Готово: ${plan.oldName} → ${newName}. Изменено файлов: ${plan.files.length}.`, 'success');
+    } catch (error) { setStatus(`Ошибка переименования: ${error.message}`, 'error'); } finally { setBusy(false); }
+  }
+  async function scanProject({ quiet = false } = {}) {
+    setBusy(true); if (!quiet) setStatus('Сканирую C#-файлы…');
+    try {
+      const result = await callBackend('analyze_project_architecture', { directory: '.' }); const graph = result.graph;
+      if (!graph) throw new Error('Нет данных графа.');
+      render(graph, { demoMode: false }); setStatus(`Проект загружен: ${graph.filesScanned ?? 0} C#-файлов, ${graph.nodes.length} узлов.`, 'success');
+    } catch (error) { render(structuredClone(demo), { demoMode: true }); setStatus(`Проект не прочитан: ${error.message}. Показан пример.`, 'error'); } finally { setBusy(false); }
+  }
+  function updateFullscreenLabel() {
+    const fullscreen = state.displayMode === 'fullscreen' || Boolean(document.fullscreenElement);
+    fullscreenButton.innerHTML = fullscreen ? 'Свернуть <span class="key">F11</span>' : 'На весь экран <span class="key">F11</span>';
+  }
+  async function toggleFullscreen() {
+    const isFullscreen = state.displayMode === 'fullscreen' || Boolean(document.fullscreenElement); const target = isFullscreen ? 'inline' : 'fullscreen';
+    try {
+      if (typeof window.openai?.requestDisplayMode === 'function') { const result = await window.openai.requestDisplayMode({ mode: target }); state.displayMode = result?.mode ?? target; }
+      else if (document.fullscreenElement) { await document.exitFullscreen(); state.displayMode = 'inline'; }
+      else if (document.documentElement.requestFullscreen) { await document.documentElement.requestFullscreen(); state.displayMode = 'fullscreen'; }
+      else throw new Error('Полноэкранный режим не поддерживается этим окном.');
+      updateFullscreenLabel();
+    } catch (error) { setStatus(`Не удалось открыть на весь экран: ${error.message}`, 'error'); }
+  }
+  function openStandalone() {
+    const href = location.pathname === '/app' ? location.href : 'http://127.0.0.1:8787/app';
+    try { if (typeof window.openai?.openExternal === 'function') window.openai.openExternal({ href }); else window.open(href, '_blank', 'noopener,noreferrer'); }
+    catch { window.open(href, '_blank', 'noopener,noreferrer'); }
+  }
+  document.querySelector('#scan').onclick = () => scanProject();
+  document.querySelector('#reset').onclick = () => { render(structuredClone(demo), { demoMode: true }); setStatus('Открыт пример. Он не связан с файлами проекта.'); };
+  document.querySelector('#fullscreen').onclick = toggleFullscreen;
+  document.querySelector('#standalone').onclick = openStandalone;
+  document.querySelector('#center').onclick = () => canvasWrap.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+  search.addEventListener('input', renderNodeList);
+  document.addEventListener('fullscreenchange', () => { state.displayMode = document.fullscreenElement ? 'fullscreen' : (window.openai?.displayMode ?? 'inline'); updateFullscreenLabel(); });
+  window.addEventListener('keydown', (event) => { if (event.key === 'F11') { event.preventDefault(); toggleFullscreen(); } });
+  window.addEventListener('resize', drawEdges);
   document.querySelector('#ask').onclick = async () => {
-    const text = prompt.value.trim(); if (!text) { status.textContent='Сначала опиши объект.'; return; }
-    status.textContent='Отправляю описание в ChatGPT…';
-    await window.openai?.setWidgetState?.({prompt:text});
-    await window.openai?.sendFollowUpMessage?.({prompt:`Создай архитектуру игрового объекта по описанию ниже. Сначала перечисли GameObject/компоненты, поля, методы, зависимости, клиент-серверные связи и проверки. Затем предложи C#-файлы для Unity. Не записывай файлы без отдельного подтверждения.\n\n${text}`,scrollToBottom:true});
-    status.textContent='Задача отправлена.';
+    const text = prompt.value.trim(); if (!text) return setStatus('Сначала опиши объект.', 'error');
+    if (typeof window.openai?.sendFollowUpMessage !== 'function') return setStatus('Чат доступен только внутри ChatGPT. В отдельной вкладке используй сканирование и редактирование графа.', 'error');
+    setStatus('Отправляю описание в ChatGPT…'); await window.openai.setWidgetState?.({ prompt: text });
+    await window.openai.sendFollowUpMessage({ prompt: `Работай как архитектор Unity-проекта с доступом к инструментам Game Builder. Проанализируй существующие файлы перед изменениями. По описанию ниже создай или доработай объект: перечисли компоненты, поля, методы, зависимости и клиент-серверные связи. Когда пользователь явно просит сделать или исправить — записывай нужные файлы через write_project_file, затем повторно анализируй проект.\n\n${text}`, scrollToBottom: true });
+    setStatus('Задача отправлена в чат.', 'success');
   };
-  const saved = window.openai?.widgetState; if (saved?.prompt) prompt.value=saved.prompt;
-  render(demo);
+  const saved = window.openai?.widgetState; if (saved?.prompt) prompt.value = saved.prompt;
+  updateFullscreenLabel(); setTimeout(() => scanProject({ quiet: true }), 150);
 </script>
 </body>
 </html>

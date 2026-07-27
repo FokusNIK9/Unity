@@ -13,7 +13,16 @@ import { z } from "zod";
 const widgetUri = "ui://widget/game-builder.html";
 const widgetHtml = readFileSync(new URL("./public/widget.html", import.meta.url), "utf8");
 const projectRoot = path.resolve(process.env.PROJECT_ROOT ?? process.cwd());
-const ignoredDirectories = new Set([".git", "Library", "Temp", "Logs", "obj", "bin", "node_modules"]);
+const ignoredDirectories = new Set([
+  ".git",
+  ".game-builder-backups",
+  "Library",
+  "Temp",
+  "Logs",
+  "obj",
+  "bin",
+  "node_modules",
+]);
 
 function safeProjectPath(relativePath) {
   const requested = String(relativePath ?? "").trim();
@@ -28,7 +37,11 @@ function safeProjectPath(relativePath) {
   return resolved;
 }
 
-async function walk(directory, extensions, maxFiles = 500) {
+function toProjectPath(absolutePath) {
+  return path.relative(projectRoot, absolutePath).replaceAll("\\", "/");
+}
+
+async function walk(directory, extensions, maxFiles = 2000) {
   const output = [];
   async function visit(current) {
     if (output.length >= maxFiles) return;
@@ -108,7 +121,7 @@ async function analyzeProject(directory = ".") {
   const nodes = [];
   for (const file of files) {
     const source = await fs.readFile(file, "utf8");
-    const relativePath = path.relative(projectRoot, file).replaceAll("\\", "/");
+    const relativePath = toProjectPath(file);
     const parsed = parseCSharp(relativePath, source);
     if (parsed) nodes.push(parsed);
   }
@@ -128,14 +141,197 @@ async function analyzeProject(directory = ".") {
   const networkNodes = [...new Set(edges.filter((edge) => edge.type === "network").map((edge) => edge.to))]
     .map((id) => ({ id, name: id.split(":")[1], path: "Network", kind: "network", inherits: [], fields: [], methods: [], dependencies: [], network: [] }));
 
-  return { root: projectRoot, scannedDirectory: directory, nodes: [...nodes, ...networkNodes], edges, filesScanned: files.length };
+  return {
+    root: projectRoot,
+    scannedDirectory: directory,
+    nodes: [...nodes, ...networkNodes],
+    edges,
+    filesScanned: files.length,
+  };
+}
+
+function isValidCSharpIdentifier(value) {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(value);
+}
+
+function consumeQuoted(source, start, prefixLength, quote, verbatim = false) {
+  let index = start + prefixLength + 1;
+  while (index < source.length) {
+    if (verbatim && source[index] === '"' && source[index + 1] === '"') {
+      index += 2;
+      continue;
+    }
+    if (!verbatim && source[index] === "\\") {
+      index += 2;
+      continue;
+    }
+    if (source[index] === quote) return index + 1;
+    index += 1;
+  }
+  return source.length;
+}
+
+function replaceCSharpIdentifier(source, oldName, newName) {
+  let output = "";
+  let index = 0;
+  let replacements = 0;
+
+  while (index < source.length) {
+    if (source.startsWith("//", index)) {
+      const end = source.indexOf("\n", index + 2);
+      const next = end === -1 ? source.length : end;
+      output += source.slice(index, next);
+      index = next;
+      continue;
+    }
+    if (source.startsWith("/*", index)) {
+      const end = source.indexOf("*/", index + 2);
+      const next = end === -1 ? source.length : end + 2;
+      output += source.slice(index, next);
+      index = next;
+      continue;
+    }
+
+    const stringPrefix = source.startsWith("$@\"", index) || source.startsWith("@$\"", index)
+      ? { length: 2, verbatim: true }
+      : source.startsWith("@\"", index)
+        ? { length: 1, verbatim: true }
+        : source.startsWith("$\"", index)
+          ? { length: 1, verbatim: false }
+          : source[index] === '"'
+            ? { length: 0, verbatim: false }
+            : null;
+
+    if (stringPrefix) {
+      const end = consumeQuoted(source, index, stringPrefix.length, '"', stringPrefix.verbatim);
+      output += source.slice(index, end);
+      index = end;
+      continue;
+    }
+
+    if (source[index] === "'") {
+      const end = consumeQuoted(source, index, 0, "'", false);
+      output += source.slice(index, end);
+      index = end;
+      continue;
+    }
+
+    if (/[A-Za-z_]/.test(source[index])) {
+      let end = index + 1;
+      while (end < source.length && /[A-Za-z0-9_]/.test(source[end])) end += 1;
+      const token = source.slice(index, end);
+      if (token === oldName) {
+        output += newName;
+        replacements += 1;
+      } else {
+        output += token;
+      }
+      index = end;
+      continue;
+    }
+
+    output += source[index];
+    index += 1;
+  }
+
+  return { content: output, replacements };
+}
+
+async function buildRenamePlan(relativePath, newName) {
+  if (!isValidCSharpIdentifier(newName)) {
+    throw new Error("Новое имя должно быть корректным C#-идентификатором.");
+  }
+
+  const sourcePath = safeProjectPath(relativePath);
+  if (path.extname(sourcePath).toLowerCase() !== ".cs") {
+    throw new Error("Переименование поддерживается только для C#-файлов.");
+  }
+
+  const source = await fs.readFile(sourcePath, "utf8");
+  const parsed = parseCSharp(relativePath, source);
+  if (!parsed) throw new Error("В файле не найден класс.");
+  const oldName = parsed.name;
+  if (oldName === newName) throw new Error("Новое имя совпадает с текущим.");
+
+  const files = await walk(projectRoot, new Set([".cs"]));
+  const changes = [];
+  for (const file of files) {
+    const original = await fs.readFile(file, "utf8");
+    const replaced = replaceCSharpIdentifier(original, oldName, newName);
+    if (replaced.replacements > 0) {
+      changes.push({
+        absolutePath: file,
+        path: toProjectPath(file),
+        content: replaced.content,
+        replacements: replaced.replacements,
+      });
+    }
+  }
+
+  const oldBaseName = path.basename(sourcePath, ".cs");
+  const nextRelativePath = oldBaseName === oldName
+    ? path.posix.join(path.posix.dirname(relativePath.replaceAll("\\", "/")), `${newName}.cs`)
+    : relativePath.replaceAll("\\", "/");
+  const nextAbsolutePath = safeProjectPath(nextRelativePath);
+
+  if (nextAbsolutePath !== sourcePath) {
+    try {
+      await fs.access(nextAbsolutePath);
+      throw new Error(`Файл ${nextRelativePath} уже существует.`);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
+
+  return {
+    oldName,
+    newName,
+    oldPath: relativePath.replaceAll("\\", "/"),
+    newPath: nextRelativePath,
+    changes,
+    totalReplacements: changes.reduce((sum, item) => sum + item.replacements, 0),
+  };
+}
+
+function publicRenamePlan(plan) {
+  return {
+    oldName: plan.oldName,
+    newName: plan.newName,
+    oldPath: plan.oldPath,
+    newPath: plan.newPath,
+    files: plan.changes.map(({ path: filePath, replacements }) => ({ path: filePath, replacements })),
+    totalReplacements: plan.totalReplacements,
+  };
+}
+
+async function applyRename(relativePath, newName) {
+  const plan = await buildRenamePlan(relativePath, newName);
+  for (const change of plan.changes) {
+    await fs.writeFile(change.absolutePath, change.content, "utf8");
+  }
+
+  const oldAbsolutePath = safeProjectPath(plan.oldPath);
+  const newAbsolutePath = safeProjectPath(plan.newPath);
+  if (oldAbsolutePath !== newAbsolutePath) {
+    await fs.rename(oldAbsolutePath, newAbsolutePath);
+  }
+
+  return { plan: publicRenamePlan(plan), graph: await analyzeProject(".") };
 }
 
 function createAnalyzerServer() {
-  const server = new McpServer({ name: "game-builder", version: "0.3.0" });
+  const server = new McpServer({ name: "game-builder", version: "0.4.0" });
 
   registerAppResource(server, widgetUri, widgetUri, { mimeType: RESOURCE_MIME_TYPE }, async () => ({
-    contents: [{ uri: widgetUri, mimeType: RESOURCE_MIME_TYPE, text: widgetHtml }],
+    contents: [{
+      uri: widgetUri,
+      mimeType: RESOURCE_MIME_TYPE,
+      text: widgetHtml,
+      _meta: {
+        "openai/widgetPrefersBorder": false,
+        "openai/widgetDescription": "Полноэкранный визуальный редактор архитектуры Unity-проекта.",
+      },
+    }],
   }));
 
   registerAppTool(server, "open_game_builder", {
@@ -144,13 +340,13 @@ function createAnalyzerServer() {
     inputSchema: {},
     _meta: { ui: { resourceUri: widgetUri }, "openai/outputTemplate": widgetUri },
   }, async () => ({
-    content: [{ type: "text", text: "Visual Game Builder готов. Можно описать объект или просканировать Unity-проект." }],
+    content: [{ type: "text", text: "Visual Game Builder готов. Проект будет просканирован автоматически." }],
     structuredContent: { ready: true, projectRoot },
   }));
 
   registerAppTool(server, "analyze_project_architecture", {
     title: "Анализ архитектуры проекта",
-    description: "Сканирует C#-файлы Unity-проекта и строит список классов, методов, полей, зависимостей и сетевых связей.",
+    description: "Сканирует C#-файлы Unity-проекта и строит классы, методы, поля, зависимости и сетевые связи.",
     inputSchema: { directory: z.string().optional() },
     _meta: { ui: { resourceUri: widgetUri } },
   }, async ({ directory = "." }) => {
@@ -158,6 +354,32 @@ function createAnalyzerServer() {
     return {
       content: [{ type: "text", text: `Проанализировано файлов: ${graph.filesScanned}; объектов: ${graph.nodes.length}.` }],
       structuredContent: { graph },
+    };
+  });
+
+  registerAppTool(server, "preview_rename_csharp_class", {
+    title: "Проверить переименование C#-класса",
+    description: "Показывает, какие C#-файлы и ссылки будут изменены при переименовании класса. Ничего не записывает.",
+    inputSchema: { path: z.string().min(1), newName: z.string().min(1).max(128) },
+    _meta: { ui: { resourceUri: widgetUri } },
+  }, async ({ path: relativePath, newName }) => {
+    const plan = publicRenamePlan(await buildRenamePlan(relativePath, newName));
+    return {
+      content: [{ type: "text", text: `Будет изменено файлов: ${plan.files.length}; замен: ${plan.totalReplacements}.` }],
+      structuredContent: { plan },
+    };
+  });
+
+  registerAppTool(server, "rename_csharp_class", {
+    title: "Переименовать C#-класс",
+    description: "Переименовывает класс и точные ссылки на него в C#-коде, а также файл, если его имя совпадает с классом.",
+    inputSchema: { path: z.string().min(1), newName: z.string().min(1).max(128) },
+    _meta: { ui: { resourceUri: widgetUri } },
+  }, async ({ path: relativePath, newName }) => {
+    const result = await applyRename(relativePath, newName);
+    return {
+      content: [{ type: "text", text: `Переименовано ${result.plan.oldName} → ${result.plan.newName}. Изменено файлов: ${result.plan.files.length}.` }],
+      structuredContent: { ...result, renamed: true },
     };
   });
 
@@ -170,7 +392,7 @@ function createAnalyzerServer() {
     const target = safeProjectPath(directory);
     const entries = await fs.readdir(target, { withFileTypes: true });
     const files = entries.map((entry) => ({
-      path: path.relative(projectRoot, path.join(target, entry.name)).replaceAll("\\", "/"),
+      path: toProjectPath(path.join(target, entry.name)),
       type: entry.isDirectory() ? "directory" : "file",
     }));
     return { content: [{ type: "text", text: JSON.stringify(files) }], structuredContent: { files } };
@@ -208,11 +430,26 @@ function createAnalyzerServer() {
 const port = Number(process.env.PORT ?? 8787);
 const mcpPath = "/mcp";
 
+async function readJsonBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  if (chunks.length === 0) return {};
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+
+function sendJson(res, status, payload) {
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "access-control-allow-origin": "*",
+  });
+  res.end(JSON.stringify(payload));
+}
+
 const httpServer = createServer(async (req, res) => {
   if (!req.url) return res.writeHead(400).end("Missing URL");
   const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`);
 
-  if (req.method === "OPTIONS" && url.pathname === mcpPath) {
+  if (req.method === "OPTIONS" && (url.pathname === mcpPath || url.pathname.startsWith("/api/"))) {
     res.writeHead(204, {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
@@ -223,7 +460,39 @@ const httpServer = createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && url.pathname === "/") {
-    return res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }).end("Visual Game Builder MCP server");
+    res.writeHead(302, { location: "/app" });
+    return res.end();
+  }
+
+  if (req.method === "GET" && url.pathname === "/app") {
+    return res.writeHead(200, { "content-type": "text/html; charset=utf-8" }).end(widgetHtml);
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/analyze") {
+    try {
+      const { directory = "." } = await readJsonBody(req);
+      return sendJson(res, 200, { graph: await analyzeProject(directory) });
+    } catch (error) {
+      return sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/rename-preview") {
+    try {
+      const { path: relativePath, newName } = await readJsonBody(req);
+      return sendJson(res, 200, { plan: publicRenamePlan(await buildRenamePlan(relativePath, newName)) });
+    } catch (error) {
+      return sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/rename") {
+    try {
+      const { path: relativePath, newName } = await readJsonBody(req);
+      return sendJson(res, 200, { ...(await applyRename(relativePath, newName)), renamed: true });
+    } catch (error) {
+      return sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+    }
   }
 
   if (url.pathname === mcpPath && new Set(["POST", "GET", "DELETE"]).has(req.method)) {
@@ -245,4 +514,7 @@ const httpServer = createServer(async (req, res) => {
   res.writeHead(404).end("Not Found");
 });
 
-httpServer.listen(port, () => console.log(`Visual Game Builder listening on http://localhost:${port}${mcpPath}`));
+httpServer.listen(port, () => {
+  console.log(`Visual Game Builder MCP: http://localhost:${port}${mcpPath}`);
+  console.log(`Visual Game Builder UI:  http://localhost:${port}/app`);
+});
