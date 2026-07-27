@@ -3,71 +3,163 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Game Builder</title>
+  <title>Visual Game Builder</title>
   <style>
-    :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; }
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
     * { box-sizing: border-box; }
-    body { margin: 0; padding: 16px; background: transparent; }
-    main { display: grid; gap: 12px; max-width: 720px; margin: auto; }
-    h2 { margin: 0; font-size: 20px; }
-    p { margin: 0; opacity: .72; font-size: 13px; }
-    label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
-    input, textarea { width: 100%; padding: 12px; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 12px; background: color-mix(in srgb, Canvas 94%, currentColor 6%); color: CanvasText; font: inherit; font-weight: 400; }
-    textarea { min-height: 150px; resize: vertical; }
-    .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    button { min-height: 42px; border: 0; border-radius: 12px; background: #10a37f; color: white; font: inherit; font-weight: 700; cursor: pointer; }
-    button.secondary { background: #64748b; }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-    #status { min-height: 18px; }
+    body { margin: 0; background: #0b1020; color: #e5e7eb; }
+    button, input, textarea { font: inherit; }
+    .app { min-height: 720px; display: grid; grid-template-rows: auto 1fr; }
+    header { padding: 14px 16px; border-bottom: 1px solid #26304a; display: flex; gap: 12px; align-items: center; justify-content: space-between; background: #11182b; }
+    h1 { margin: 0; font-size: 18px; }
+    .sub { opacity: .65; font-size: 12px; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    button { border: 1px solid #33415f; background: #18233a; color: #e5e7eb; border-radius: 9px; padding: 9px 12px; cursor: pointer; }
+    button.primary { background: #10a37f; border-color: #10a37f; color: white; font-weight: 700; }
+    main { display: grid; grid-template-columns: 240px minmax(360px, 1fr) 320px; min-height: 0; }
+    aside, .inspector { padding: 12px; overflow: auto; background: #11182b; }
+    aside { border-right: 1px solid #26304a; }
+    .inspector { border-left: 1px solid #26304a; }
+    .section-title { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .6; margin: 8px 0; }
+    .prompt { width: 100%; min-height: 130px; resize: vertical; background: #0d1426; color: white; border: 1px solid #33415f; border-radius: 10px; padding: 10px; }
+    .node-list { display: grid; gap: 6px; }
+    .node-item { text-align: left; width: 100%; padding: 9px; background: #151f34; }
+    .node-item small { display: block; opacity: .55; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; }
+    .canvas-wrap { position: relative; overflow: auto; background: radial-gradient(circle at 1px 1px, #27324d 1px, transparent 1px); background-size: 22px 22px; }
+    #canvas { position: relative; min-width: 900px; min-height: 680px; }
+    svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .card { position: absolute; width: 190px; background: #172238; border: 1px solid #3a4969; border-radius: 12px; box-shadow: 0 10px 28px #0008; cursor: pointer; overflow: hidden; }
+    .card.selected { outline: 2px solid #10a37f; }
+    .card .head { padding: 10px 12px; font-weight: 800; background: #1d2a45; }
+    .card .body { padding: 9px 12px; font-size: 12px; display: grid; gap: 5px; }
+    .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; font-size: 10px; background: #2a3856; margin-right: 4px; }
+    .badge.network { background: #56305f; }
+    .empty { opacity: .55; padding: 24px; text-align: center; }
+    .details h2 { margin: 0 0 4px; font-size: 18px; }
+    .details .path { opacity: .55; font-size: 11px; word-break: break-all; }
+    .details ul { margin: 6px 0 14px; padding-left: 18px; }
+    .details code { font-size: 11px; }
+    #status { font-size: 12px; min-height: 18px; opacity: .75; margin-top: 8px; }
+    @media (max-width: 900px) { main { grid-template-columns: 210px 1fr; } .inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid #26304a; } }
   </style>
 </head>
 <body>
+<div class="app">
+  <header>
+    <div><h1>Visual Game Builder</h1><div class="sub">Объекты, компоненты, методы, зависимости и сетевые связи</div></div>
+    <div class="actions"><button id="scan" class="primary">Сканировать проект</button><button id="reset">Демо-граф</button></div>
+  </header>
   <main>
-    <h2>Game Builder</h2>
-    <p>Опиши объект и его поведение — ChatGPT сгенерирует код и при просьбе сохранит его в проект.</p>
-    <label>Название объекта<input id="name" placeholder="Например: HeroController" /></label>
-    <label>Описание поведения<textarea id="behavior" placeholder="HP, движение, синхронизация по мультиплееру, компоненты и т.п."></textarea></label>
-    <div class="actions">
-      <button data-mode="generate">Сгенерировать</button>
-      <button class="secondary" data-mode="fix">Исправить</button>
-      <button class="secondary" data-mode="optimize">Оптимизировать</button>
-    </div>
-    <p id="status" role="status"></p>
+    <aside>
+      <div class="section-title">Опиши объект</div>
+      <textarea id="prompt" class="prompt" placeholder="Например: герой ходит, получает урон, синхронизирует HP и просит сервер о респавне"></textarea>
+      <button id="ask" class="primary" style="width:100%;margin-top:8px">Создать вместе с ChatGPT</button>
+      <div id="status"></div>
+      <div class="section-title">Объекты проекта</div>
+      <div id="nodes" class="node-list"></div>
+    </aside>
+    <section class="canvas-wrap"><div id="canvas"><svg id="edges"></svg><div id="empty" class="empty">Нажми «Сканировать проект» или открой демо-граф.</div></div></section>
+    <section class="inspector"><div id="details" class="details"><div class="empty">Выбери узел на графе</div></div></section>
   </main>
-  <script type="module">
-    const name = document.querySelector("#name");
-    const behavior = document.querySelector("#behavior");
-    const status = document.querySelector("#status");
-    const saved = window.openai?.widgetState;
-    if (saved) { name.value = saved.name ?? ""; behavior.value = saved.behavior ?? ""; }
-    const save = () => window.openai?.setWidgetState?.({ name: name.value, behavior: behavior.value });
-    name.addEventListener("input", save);
-    behavior.addEventListener("input", save);
+</div>
+<script type="module">
+  const state = { graph: null, selected: null };
+  const nodesEl = document.querySelector('#nodes');
+  const canvas = document.querySelector('#canvas');
+  const edgesSvg = document.querySelector('#edges');
+  const details = document.querySelector('#details');
+  const status = document.querySelector('#status');
+  const prompt = document.querySelector('#prompt');
 
-    document.querySelector(".actions").addEventListener("click", async (event) => {
-      const button = event.target.closest("button");
-      if (!button) return;
-      const objectName = name.value.trim();
-      const description = behavior.value.trim();
-      if (!objectName || !description) { status.textContent = "Заполни оба поля."; return; }
-      document.querySelectorAll("button").forEach((item) => { item.disabled = true; });
-      const mode = button.dataset.mode;
-      const instruction = {
-        generate: "Сгенерируй рабочий игровой код и объясни, куда его добавить.",
-        fix: "Найди ошибки и предложи исправленный полный вариант кода.",
-        optimize: "Оптимизируй архитектуру, производительность и сетевую логику.",
-      }[mode];
-      const prompt = `${instruction}\n\nОбъект: ${objectName}\nОписание поведения:\n${description}\n\nЕсли я попрошу сохранить результат, используй инструмент write_project_file и записывай только в настроенную папку проекта.`;
-      status.textContent = "Отправляю задачу в ChatGPT…";
-      try {
-        await window.openai.sendFollowUpMessage({ prompt, scrollToBottom: true });
-        status.textContent = "Задача отправлена в чат.";
-      } catch {
-        status.textContent = "Не удалось отправить задачу.";
-      } finally {
-        document.querySelectorAll("button").forEach((item) => { item.disabled = false; });
+  const demo = {
+    nodes: [
+      { id:'Player', name:'Player', path:'Assets/Scripts/Player.cs', kind:'component', inherits:['NetworkBehaviour'], fields:[{visibility:'public',type:'float',name:'Health'}], methods:[{visibility:'public',name:'TakeDamage',parameters:['float amount']},{visibility:'private',name:'RequestRespawn',parameters:[]}], dependencies:['Movement','RespawnService'], network:['synchronized-state'] },
+      { id:'Movement', name:'Movement', path:'Assets/Scripts/Movement.cs', kind:'component', inherits:['MonoBehaviour'], fields:[], methods:[{visibility:'private',name:'Update',parameters:[]}], dependencies:[], network:[] },
+      { id:'RespawnService', name:'RespawnService', path:'Assets/Scripts/RespawnService.cs', kind:'component', inherits:['NetworkBehaviour'], fields:[], methods:[{visibility:'public',name:'RespawnPlayer',parameters:['ulong playerId']}], dependencies:[], network:['client-to-server'] },
+      { id:'network:synchronized-state', name:'synchronized-state', path:'Network', kind:'network', inherits:[], fields:[], methods:[], dependencies:[], network:[] },
+      { id:'network:client-to-server', name:'client-to-server', path:'Network', kind:'network', inherits:[], fields:[], methods:[], dependencies:[], network:[] }
+    ],
+    edges: [
+      {from:'Player',to:'Movement',type:'dependency',label:'Movement'},
+      {from:'Player',to:'RespawnService',type:'dependency',label:'RespawnService'},
+      {from:'Player',to:'network:synchronized-state',type:'network',label:'sync'},
+      {from:'RespawnService',to:'network:client-to-server',type:'network',label:'RPC'}
+    ]
+  };
+
+  function positions(graph) {
+    const map = new Map();
+    const normal = graph.nodes.filter(n => n.kind !== 'network');
+    const network = graph.nodes.filter(n => n.kind === 'network');
+    normal.forEach((n,i) => map.set(n.id,{x:40+(i%3)*260,y:50+Math.floor(i/3)*190}));
+    network.forEach((n,i) => map.set(n.id,{x:690,y:80+i*170}));
+    return map;
+  }
+
+  function render(graph) {
+    state.graph = graph; state.selected = null;
+    [...canvas.querySelectorAll('.card')].forEach(el => el.remove());
+    nodesEl.innerHTML = ''; edgesSvg.innerHTML = '';
+    document.querySelector('#empty').style.display = graph.nodes.length ? 'none' : 'block';
+    const pos = positions(graph);
+
+    for (const node of graph.nodes) {
+      const item = document.createElement('button');
+      item.className = 'node-item';
+      item.innerHTML = `${node.name}<small>${node.path}</small>`;
+      item.onclick = () => select(node.id);
+      nodesEl.appendChild(item);
+
+      const card = document.createElement('div');
+      card.className = 'card'; card.dataset.id = node.id;
+      card.style.left = pos.get(node.id).x+'px'; card.style.top = pos.get(node.id).y+'px';
+      card.innerHTML = `<div class="head">${node.name}</div><div class="body"><div><span class="badge">${node.kind}</span>${node.network?.map(()=>'<span class="badge network">network</span>').join('')||''}</div><div>${node.methods?.length||0} методов · ${node.fields?.length||0} полей</div></div>`;
+      card.onclick = () => select(node.id);
+      canvas.appendChild(card);
+    }
+
+    requestAnimationFrame(() => {
+      for (const edge of graph.edges) {
+        const a = pos.get(edge.from), b = pos.get(edge.to); if (!a || !b) continue;
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1',a.x+190); line.setAttribute('y1',a.y+48); line.setAttribute('x2',b.x); line.setAttribute('y2',b.y+48);
+        line.setAttribute('stroke',edge.type==='network'?'#c084fc':'#64748b'); line.setAttribute('stroke-width','2');
+        edgesSvg.appendChild(line);
       }
     });
-  </script>
+  }
+
+  function select(id) {
+    state.selected = id;
+    document.querySelectorAll('.card').forEach(el => el.classList.toggle('selected',el.dataset.id===id));
+    const node = state.graph.nodes.find(n => n.id===id); if (!node) return;
+    details.innerHTML = `<h2>${node.name}</h2><div class="path">${node.path}</div>
+      <div class="section-title">Наследование</div><div>${node.inherits?.map(v=>`<span class="badge">${v}</span>`).join('')||'—'}</div>
+      <div class="section-title">Поля и доступ</div><ul>${node.fields?.map(f=>`<li><code>${f.visibility} ${f.type} ${f.name}</code></li>`).join('')||'<li>Нет найденных полей</li>'}</ul>
+      <div class="section-title">Методы</div><ul>${node.methods?.map(m=>`<li><code>${m.visibility} ${m.name}(${m.parameters.join(', ')})</code></li>`).join('')||'<li>Нет найденных методов</li>'}</ul>
+      <div class="section-title">Зависимости</div><div>${node.dependencies?.map(v=>`<span class="badge">${v}</span>`).join('')||'—'}</div>
+      <div class="section-title">Сеть</div><div>${node.network?.map(v=>`<span class="badge network">${v}</span>`).join('')||'—'}</div>`;
+  }
+
+  document.querySelector('#reset').onclick = () => render(demo);
+  document.querySelector('#scan').onclick = async () => {
+    status.textContent = 'Сканирую C#-файлы…';
+    try {
+      const result = await window.openai?.callTool?.('analyze_project_architecture',{directory:'.'});
+      const graph = result?.structuredContent?.graph ?? result?.graph;
+      if (!graph) throw new Error('Нет данных графа');
+      render(graph); status.textContent = `Готово: ${graph.filesScanned ?? graph.nodes.length} файлов/узлов.`;
+    } catch (error) { status.textContent = 'Не удалось сканировать. Открываю демо-граф.'; render(demo); }
+  };
+  document.querySelector('#ask').onclick = async () => {
+    const text = prompt.value.trim(); if (!text) { status.textContent='Сначала опиши объект.'; return; }
+    status.textContent='Отправляю описание в ChatGPT…';
+    await window.openai?.setWidgetState?.({prompt:text});
+    await window.openai?.sendFollowUpMessage?.({prompt:`Создай архитектуру игрового объекта по описанию ниже. Сначала перечисли GameObject/компоненты, поля, методы, зависимости, клиент-серверные связи и проверки. Затем предложи C#-файлы для Unity. Не записывай файлы без отдельного подтверждения.\n\n${text}`,scrollToBottom:true});
+    status.textContent='Задача отправлена.';
+  };
+  const saved = window.openai?.widgetState; if (saved?.prompt) prompt.value=saved.prompt;
+  render(demo);
+</script>
 </body>
 </html>
