@@ -1,36 +1,73 @@
-# Game Builder — ChatGPT App
+# Visual Game Builder — ChatGPT App + локальный редактор
 
-This app opens a two-field Game Builder inside ChatGPT. The model can also use
-`list_project_files`, `read_project_file`, and `write_project_file` to inspect
-and update text files inside the local project root.
+Visual Game Builder сканирует C#-файлы Unity-проекта и показывает классы, методы, поля, зависимости и сетевые связи в виде графа.
 
-## Important
+## Что уже работает
 
-The MCP server only allows relative paths below its project root. Put this
-folder in the game project directory if you want generated files to appear
-there, or set `PROJECT_ROOT` before starting the server.
+- автоматическое сканирование `.cs`-файлов;
+- полноэкранный режим внутри ChatGPT через кнопку **«На весь экран»**;
+- горячая клавиша **F11**;
+- отдельная локальная версия на `http://127.0.0.1:8787/app`;
+- перетаскивание узлов графа;
+- просмотр методов, полей, наследования и зависимостей;
+- реальное переименование C#-класса с предварительным просмотром затрагиваемых файлов;
+- переименование файла, когда его имя совпадает с именем класса;
+- обновление точных ссылок на класс в других `.cs`-файлах;
+- инструменты чтения и записи файлов только внутри `PROJECT_ROOT`.
 
-## One-time setup
+## Важно: папка проекта
 
-Set the runtime key in Windows (use a newly created key; never commit it):
+MCP-сервер не выходит за пределы настроенной папки проекта. Чтобы он видел Unity-проект, либо положи папку приложения внутрь проекта, либо задай переменную `PROJECT_ROOT` перед запуском.
+
+Пример для текущего окна CMD:
+
+```bat
+set PROJECT_ROOT=D:\Games\MyUnityProject
+```
+
+Для постоянной настройки Windows:
+
+```bat
+setx PROJECT_ROOT "D:\Games\MyUnityProject"
+```
+
+После `setx` открой новое окно терминала.
+
+## Однократная настройка туннеля
 
 ```bat
 setx CONTROL_PLANE_API_KEY "PASTE_NEW_KEY_HERE"
 ```
 
-Open a new terminal after `setx`.
+Не добавляй ключ в GitHub.
 
-## Start
+## Запуск
 
-Double-click `launch_tabs.bat`. It opens one Windows Terminal window with an
-MCP tab and an OpenAI tunnel tab. Keep both tabs open while using the app.
+Запусти:
 
-In ChatGPT, refresh/reconnect the app and say:
+```text
+launch_game_builder_ready.bat
+```
 
-> Открой Game Builder
+Скрипт:
 
-Then ask explicitly when you want files changed, for example:
+1. запускает MCP-сервер;
+2. запускает OpenAI tunnel;
+3. открывает полноразмерный редактор в браузере;
+4. оставляет интерфейс доступным внутри ChatGPT.
 
-> Создай `Assets/Scripts/HeroController.cs` и сохрани его в проект.
+В браузере нажми **F11** для настоящего полноэкранного режима. Внутри ChatGPT нажми кнопку **«На весь экран»** или F11 — виджет запросит fullscreen у ChatGPT.
 
-The write tool is intentionally limited to the configured project root.
+## Переименование класса
+
+1. Нажми **«Сканировать»**.
+2. Выбери класс на графе.
+3. В инспекторе введи новое имя.
+4. Нажми **«Переименовать»**.
+5. Проверь список затрагиваемых файлов и подтверди.
+
+Режим **«Пример»** не связан с файлами. В нём переименование меняет только демонстрационный граф, и интерфейс показывает об этом предупреждение.
+
+## Ограничение текущего анализатора
+
+Парсер C# пока эвристический и не использует Roslyn. Он подходит для обычных Unity-классов, но сложный сгенерированный код, несколько классов в одном файле и необычный синтаксис могут потребовать ручной проверки.
