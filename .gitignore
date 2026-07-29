@@ -1,0 +1,35 @@
+# Unity generated folders
+main-proj/Library/
+main-proj/Temp/
+main-proj/Logs/
+main-proj/UserSettings/
+main-proj/obj/
+main-proj/.vs/
+
+# Unity generated project files
+main-proj/*.csproj
+main-proj/*.sln
+main-proj/*.user
+main-proj/*.userprefs
+main-proj/*.pidb
+main-proj/*.booproj
+main-proj/*.suo
+main-proj/*.svd
+main-proj/*.tmp
+main-proj/*.log
+main-proj/*.pdb
+main-proj/*.mdb
+main-proj/*.opendb
+main-proj/*.VC.db
+
+# Keep only the game folder inside Assets
+main-proj/Assets/*
+!main-proj/Assets/MainGame/
+!main-proj/Assets/MainGame/**
+
+# Ignore the service project and its generated files
+game-builder-file-sync-proj/
+
+# Editor and backup noise
+*.bak
+*.bak-*
