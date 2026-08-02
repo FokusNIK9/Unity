@@ -5,6 +5,34 @@ main-proj/Logs/
 main-proj/UserSettings/
 main-proj/obj/
 main-proj/.vs/
+main-proj/MemoryCaptures/
+main-proj/Recordings/
+main-proj/Build/
+main-proj/Builds/
+main-proj/.plastic/
+
+# Codex / MCP / local verification caches
+.codex-unity-verify/
+.codex/
+.agents/
+
+# Generated Unity folders in any nested project
+**/Library/
+**/Temp/
+**/Logs/
+**/UserSettings/
+**/obj/
+
+# Common IDE and OS noise
+.idea/
+.vscode/
+.vs/
+*.user
+*.userprefs
+*.suo
+*.swp
+.DS_Store
+Thumbs.db
 
 # Unity generated project files
 main-proj/*.csproj
